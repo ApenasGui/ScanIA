@@ -13,6 +13,7 @@ import {
   useReceiptImageUrl,
   useUpdateReceipt,
 } from '@/hooks/useReceipts';
+import { ApiError } from '@/lib/api';
 import { colors, radius, spacing } from '@/theme';
 import { confirmAction, showMessage } from '@/utils/dialogs';
 import { friendlyError } from '@/utils/errors';
@@ -51,7 +52,14 @@ export default function ReceiptDetailScreen() {
 
   function retry() {
     reanalyze.mutate(current.id, {
-      onError: (e) => showMessage('A leitura falhou', friendlyError(e)),
+      onError: (e) => {
+        // 409: o usuário salvou enquanto a IA lia; a correção dele foi mantida.
+        const kept = e instanceof ApiError && e.status === 409;
+        showMessage(
+          kept ? 'Seus dados foram mantidos' : 'A leitura falhou',
+          friendlyError(e),
+        );
+      },
     });
   }
 

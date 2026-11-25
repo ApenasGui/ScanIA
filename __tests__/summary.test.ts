@@ -1,5 +1,10 @@
 import type { Receipt } from '@/types';
-import { filterByMonth, receiptDate, summarizeReceipts } from '@/utils/summary';
+import {
+  filterByMonth,
+  formatPercent,
+  receiptDate,
+  summarizeReceipts,
+} from '@/utils/summary';
 
 function make(partial: Partial<Receipt> & Pick<Receipt, 'id'>): Receipt {
   return {
@@ -70,5 +75,25 @@ describe('datas das notas', () => {
     ];
     const ids = filterByMonth(list, { year: 2026, month: 9 }).map((r) => r.id);
     expect(ids).toEqual(['2', '3']);
+  });
+});
+
+// Regressões do QA (bugs 2 e 13). Os testes rodam no fuso de Brasília (jest.global-setup.js).
+describe('fuso horário e porcentagem', () => {
+  it('nota sem data enviada em 30/11 às 22:30 (Brasília) fica em novembro', () => {
+    const late = make({
+      id: 'x',
+      purchase_date: null,
+      created_at: '2026-12-01T01:30:00.000Z',
+    });
+    expect(receiptDate(late)).toBe('2026-11-30');
+    expect(filterByMonth([late], { year: 2026, month: 11 })).toHaveLength(1);
+    expect(filterByMonth([late], { year: 2026, month: 12 })).toHaveLength(0);
+  });
+
+  it('categoria com valor nunca aparece como 0%', () => {
+    expect(formatPercent(0.01)).toBe('<1%');
+    expect(formatPercent(0)).toBe('0%');
+    expect(formatPercent(49.6)).toBe('50%');
   });
 });

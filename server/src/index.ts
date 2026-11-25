@@ -12,7 +12,13 @@ import { isMockMode, readReceiptImage } from './ai.ts';
 import { HttpError, login, logout, register, userFromToken } from './auth.ts';
 import type { PublicUser } from './auth.ts';
 import { DATA_DIR, UPLOADS_DIR, db } from './db.ts';
-import { ReceiptReadError, looksLikeJpeg } from './parse.ts';
+import {
+  ReceiptReadError,
+  isCategory,
+  isValidPurchaseDate,
+  looksLikeJpeg,
+  validTotal,
+} from './parse.ts';
 import type { ExtractedReceipt } from './parse.ts';
 
 const PORT = Number(process.env.PORT ?? 3333);
@@ -103,15 +109,25 @@ function findReceipt(userId: string, id: string): ReceiptRow {
   return row;
 }
 
-function saveResult(id: string, r: ExtractedReceipt) {
+// Grava o que a IA leu. Só grava se a nota AINDA está esperando a leitura:
+// se o usuário salvou a correção (vira 'done') ou excluiu a nota enquanto a IA lia,
+// a correção dele vale e o resultado da IA é descartado. Devolve false nesse caso.
+function saveResult(id: string, r: ExtractedReceipt): boolean {
   // Transação: ou grava tudo (nota + itens), ou nada.
   db.exec('begin');
   try {
+    const { changes } = db
+      .prepare(
+        `update receipts set status = 'done', error_message = null, merchant = ?,
+         purchase_date = ?, total = ?, category = ?, payment_method = ?
+         where id = ? and status = 'pending'`,
+      )
+      .run(r.merchant, r.purchase_date, r.total, r.category, r.payment_method, id);
+    if (changes === 0) {
+      db.exec('rollback');
+      return false;
+    }
     db.prepare('delete from receipt_items where receipt_id = ?').run(id); // nova tentativa
-    db.prepare(
-      `update receipts set status = 'done', error_message = null, merchant = ?,
-       purchase_date = ?, total = ?, category = ?, payment_method = ? where id = ?`,
-    ).run(r.merchant, r.purchase_date, r.total, r.category, r.payment_method, id);
     const insertItem = db.prepare(
       `insert into receipt_items (id, receipt_id, description, quantity, unit_price, total_price)
        values (?, ?, ?, ?, ?, ?)`,
@@ -127,28 +143,49 @@ function saveResult(id: string, r: ExtractedReceipt) {
       );
     }
     db.exec('commit');
+    return true;
   } catch (error) {
     db.exec('rollback');
     throw error;
   }
 }
 
+// A nota mudou enquanto a IA lia: foi excluída (404) ou o usuário salvou à mão (409).
+function scanSkipped(res: ServerResponse, userId: string, id: string) {
+  const exists = db
+    .prepare('select 1 from receipts where id = ? and user_id = ?')
+    .get(id, userId);
+  console.log(`[scan] nota ${id} mudou durante a leitura; resultado da IA descartado`);
+  if (!exists) return sendJson(res, 404, { error: 'Nota não encontrada.' });
+  return sendJson(res, 409, {
+    error: 'Você salvou a nota enquanto a IA lia. Seus dados foram mantidos.',
+  });
+}
+
 async function scanReceipt(res: ServerResponse, user: PublicUser, id: string) {
   const receipt = findReceipt(user.id, id);
+  // Marca "esperando a leitura". Se o usuário salvar no meio, vira 'done' e a IA não grava.
+  db.prepare(
+    `update receipts set status = 'pending', error_message = null where id = ?`,
+  ).run(receipt.id);
   try {
     const bytes = readFileSync(path.join(UPLOADS_DIR, receipt.image_path));
     const extracted = await readReceiptImage(bytes);
-    saveResult(receipt.id, extracted);
+    if (!saveResult(receipt.id, extracted)) return scanSkipped(res, user.id, receipt.id);
     sendJson(res, 200, { ok: true, receipt_id: receipt.id });
   } catch (err) {
     const expected = err instanceof ReceiptReadError;
-    if (!expected) console.error('[scan] falha interna:', err);
     const message = expected
       ? err.message
       : 'Falha ao processar a nota. Tente novamente.';
-    db.prepare(
-      `update receipts set status = 'error', error_message = ? where id = ?`,
-    ).run(message, receipt.id);
+    const { changes } = db
+      .prepare(
+        `update receipts set status = 'error', error_message = ?
+         where id = ? and status = 'pending'`,
+      )
+      .run(message, receipt.id);
+    if (changes === 0) return scanSkipped(res, user.id, receipt.id);
+    if (!expected) console.error('[scan] falha interna:', err);
     sendJson(res, expected ? 422 : 500, { error: message });
   }
 }
@@ -183,21 +220,21 @@ function updateReceipt(user: PublicUser, id: string, body: Record<string, unknow
   const merchant =
     typeof body.merchant === 'string' ? body.merchant.trim().slice(0, 80) : '';
   const date = body.purchase_date;
-  const total = body.total;
-  const category = typeof body.category === 'string' ? body.category : 'Outros';
+  const total = validTotal(body.total);
+  const category = body.category ?? 'Outros';
 
+  // O app já valida tudo isto, mas o servidor nunca confia no app.
   if (merchant.length < 2) throw new HttpError(400, 'Informe o estabelecimento.');
-  if (date !== null && (typeof date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(date))) {
+  if (date !== null && !isValidPurchaseDate(date)) {
     throw new HttpError(400, 'Data inválida.');
   }
-  if (typeof total !== 'number' || !Number.isFinite(total) || total <= 0) {
-    throw new HttpError(400, 'Valor inválido.');
-  }
+  if (total === null) throw new HttpError(400, 'Valor inválido.');
+  if (!isCategory(category)) throw new HttpError(400, 'Categoria inválida.');
 
   db.prepare(
     `update receipts set merchant = ?, purchase_date = ?, total = ?, category = ?,
      status = 'done', error_message = null where id = ? and user_id = ?`,
-  ).run(merchant, date, Math.round(total * 100) / 100, category, id, user.id);
+  ).run(merchant, date, total, category, id, user.id);
 }
 
 function deleteReceipt(user: PublicUser, id: string) {
@@ -265,7 +302,11 @@ async function route(req: IncomingMessage, res: ServerResponse) {
 
   if (method === 'GET' && parts.length === 1) {
     const list = db
-      .prepare('select * from receipts where user_id = ? order by created_at desc')
+      // Mais recentes primeiro pela data da COMPRA; sem data, vale a do envio.
+      .prepare(
+        `select * from receipts where user_id = ?
+         order by coalesce(purchase_date, substr(created_at, 1, 10)) desc, created_at desc`,
+      )
       .all(user.id);
     return sendJson(res, 200, list);
   }

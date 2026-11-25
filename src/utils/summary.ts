@@ -1,6 +1,6 @@
 import { categoryInfo } from '@/constants/categories';
 import type { Receipt } from '@/types';
-import { monthRange } from './date';
+import { monthRange, toISO } from './date';
 import type { YearMonth } from './date';
 
 export interface CategoryTotal {
@@ -20,8 +20,16 @@ export interface ReceiptSummary {
 }
 
 // Data usada nos relatórios: a da compra, ou a do envio se a IA não a encontrou.
+// created_at vem em UTC: converte para o dia NO FUSO DO CELULAR. Sem isso, uma nota
+// enviada em 30/11 às 22:30 (horário de Brasília) caía em dezembro.
 export function receiptDate(receipt: Receipt): string {
-  return receipt.purchase_date ?? receipt.created_at.slice(0, 10);
+  return receipt.purchase_date ?? toISO(new Date(receipt.created_at));
+}
+
+// Porcentagem para mostrar: categoria com valor nunca aparece como "0%".
+export function formatPercent(percent: number): string {
+  if (percent > 0 && percent < 0.5) return '<1%';
+  return `${Math.round(percent)}%`;
 }
 
 export function filterByMonth(list: Receipt[], month: YearMonth): Receipt[] {

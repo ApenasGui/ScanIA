@@ -6,7 +6,7 @@ const CONFIG: Record<
   ReceiptStatus,
   { label: string; color: string; background: string }
 > = {
-  pending: { label: 'Processando', color: '#B45309', background: '#FEF3C7' },
+  pending: { label: 'Não lida', color: '#B45309', background: '#FEF3C7' },
   done: { label: 'Lida', color: '#15803D', background: '#DCFCE7' },
   error: { label: 'Falhou', color: colors.danger, background: '#FEE2E2' },
 };

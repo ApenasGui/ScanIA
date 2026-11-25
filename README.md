@@ -167,4 +167,5 @@ peça virou algo local e simples:
 | "Sem conexão com o servidor"              | Confira se `npm run server` está rodando e se o celular está no mesmo Wi-Fi                         |
 | Funciona no navegador, mas não no celular | O Firewall do Windows pode bloquear a porta 3333: permita o Node na rede privada                  |
 | Servidor em outra máquina                 | Defina `EXPO_PUBLIC_API_URL=http://IP:3333` no `.env` da raiz e reinicie com `npx expo start -c` |
+| "Muitas tentativas" no login              | 5 senhas erradas seguidas travam o e-mail por 15 minutos. Espere ou reinicie o servidor          |
 | "Falha ao processar a nota" sempre        | Veja o terminal do servidor. Confira `MOCK_AI` e `ANTHROPIC_API_KEY` no `server/.env`              |

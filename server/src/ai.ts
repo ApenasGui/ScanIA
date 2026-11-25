@@ -73,7 +73,9 @@ async function callClaude(base64: string): Promise<unknown> {
   if (!process.env.ANTHROPIC_API_KEY) {
     throw new Error('ANTHROPIC_API_KEY não configurada no server/.env.');
   }
-  client ??= new Anthropic({ timeout: 60_000 });
+  // Pior caso: 45 s × 2 tentativas ≈ 90 s. O app espera 150 s pela leitura
+  // (READ_TIMEOUT_MS em src/services/receipts.ts), então ele sempre recebe a resposta.
+  client ??= new Anthropic({ timeout: 45_000, maxRetries: 1 });
 
   const response = await client.messages.create({
     model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,

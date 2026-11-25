@@ -19,9 +19,16 @@ export async function uploadReceipt(base64: string): Promise<string> {
   return id;
 }
 
+// A IA no servidor desiste em ~90 s no pior caso (server/src/ai.ts). Esperamos mais que
+// isso: se o app desistir antes, a nota fica "não lida" e o usuário paga duas leituras.
+const READ_TIMEOUT_MS = 150_000;
+
 // Pede ao servidor para ler a nota com IA. Em caso de falha, a mensagem vem do servidor.
 export async function analyzeReceipt(receiptId: string): Promise<void> {
-  await api(`/receipts/${receiptId}/scan`, { method: 'POST' });
+  await api(`/receipts/${receiptId}/scan`, {
+    method: 'POST',
+    timeoutMs: READ_TIMEOUT_MS,
+  });
 }
 
 export async function updateReceipt(id: string, input: ReceiptUpdate): Promise<void> {

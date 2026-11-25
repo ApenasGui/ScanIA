@@ -1,11 +1,15 @@
 import { CATEGORY_NAMES as APP_CATEGORIES } from '@/constants/categories';
 import {
   CATEGORY_NAMES,
+  MAX_TOTAL,
   MOCK_RECEIPT,
   ReceiptReadError,
+  isCategory,
+  isValidPurchaseDate,
   looksLikeJpeg,
   normalizeReceipt,
   toBase64,
+  validTotal,
 } from '../server/src/parse';
 
 const valid = {
@@ -122,5 +126,41 @@ describe('looksLikeJpeg', () => {
 describe('categorias', () => {
   it('a lista do app e a do servidor são idênticas', () => {
     expect([...APP_CATEGORIES]).toEqual([...CATEGORY_NAMES]);
+  });
+});
+
+// Regressões do QA (bugs 3, 5, 6, 7 e 14).
+describe('regras de valor, data e categoria', () => {
+  it('valor que arredonda para zero não passa (antes dava erro 500 no banco)', () => {
+    expect(validTotal(0.004)).toBeNull();
+    expect(validTotal(0.005)).toBe(0.01);
+    expect(validTotal(12.345)).toBe(12.35);
+    expect(() => normalizeReceipt({ ...valid, total: 0.004, items: [] })).toThrow(
+      ReceiptReadError,
+    );
+  });
+
+  it('valor absurdo não passa', () => {
+    expect(validTotal(1e300)).toBeNull();
+    expect(validTotal(MAX_TOTAL)).toBe(MAX_TOTAL);
+    expect(validTotal(Number.NaN)).toBeNull();
+    expect(validTotal('10')).toBeNull();
+  });
+
+  it('data de compra: existe, é de 2000 em diante e não está no futuro', () => {
+    expect(isValidPurchaseDate('2026-09-18')).toBe(true);
+    expect(isValidPurchaseDate('2026-02-31')).toBe(false);
+    expect(isValidPurchaseDate('2026-13-45')).toBe(false);
+    expect(isValidPurchaseDate('1999-12-31')).toBe(false);
+    expect(isValidPurchaseDate('2099-01-01')).toBe(false);
+    expect(
+      normalizeReceipt({ ...valid, purchase_date: '2099-01-01' }).purchase_date,
+    ).toBeNull();
+  });
+
+  it('só aceita as categorias da lista', () => {
+    expect(isCategory('Saúde')).toBe(true);
+    expect(isCategory('Hackeado')).toBe(false);
+    expect(isCategory(123)).toBe(false);
   });
 });

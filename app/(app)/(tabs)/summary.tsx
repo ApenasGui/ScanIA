@@ -11,7 +11,7 @@ import { currentYearMonth } from '@/utils/date';
 import type { YearMonth } from '@/utils/date';
 import { friendlyError } from '@/utils/errors';
 import { formatMoney } from '@/utils/money';
-import { filterByMonth, summarizeReceipts } from '@/utils/summary';
+import { filterByMonth, formatPercent, summarizeReceipts } from '@/utils/summary';
 
 export default function SummaryScreen() {
   const [month, setMonth] = useState<YearMonth>(currentYearMonth());
@@ -62,7 +62,7 @@ export default function SummaryScreen() {
                   <View style={[styles.dot, { backgroundColor: c.color }]} />
                   <Text style={styles.legendName}>{c.category}</Text>
                   <Text style={styles.legendValue}>{formatMoney(c.total)}</Text>
-                  <Text style={styles.legendPercent}>{Math.round(c.percent)}%</Text>
+                  <Text style={styles.legendPercent}>{formatPercent(c.percent)}</Text>
                 </View>
               ))}
             </>

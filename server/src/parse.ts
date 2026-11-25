@@ -45,16 +45,37 @@ function toText(value: unknown, max: number): string {
   return typeof value === 'string' ? value.trim().slice(0, max) : '';
 }
 
-// Aceita só datas reais no formato AAAA-MM-DD.
-function toDate(value: unknown): string | null {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
+// Maior valor aceito para uma nota (o mesmo limite do formulário do app).
+export const MAX_TOTAL = 9_999_999.99;
+
+// Valor final da nota já arredondado em centavos, ou null se não servir.
+// Arredondar ANTES de conferir evita "0,004" virar 0 e quebrar a regra do banco.
+export function validTotal(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  const rounded = round2(value);
+  return rounded >= 0.01 && rounded <= MAX_TOTAL ? rounded : null;
+}
+
+export function isCategory(value: unknown): value is CategoryName {
+  return CATEGORY_NAMES.some((c) => c === value);
+}
+
+// Data de compra aceitável: existe no calendário (nada de 31/02), é de 2000 em diante
+// e não está no futuro. "Amanhã" ainda passa por causa da diferença de fuso horário.
+export function isValidPurchaseDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
   const [y, m, d] = value.split('-').map(Number);
   const date = new Date(Date.UTC(y, m - 1, d));
-  const valid =
+  const real =
     date.getUTCFullYear() === y &&
     date.getUTCMonth() === m - 1 &&
     date.getUTCDate() === d;
-  return valid ? value : null;
+  const tomorrow = Date.now() + 24 * 60 * 60 * 1000;
+  return real && y >= 2000 && date.getTime() <= tomorrow;
+}
+
+function toDate(value: unknown): string | null {
+  return isValidPurchaseDate(value) ? value : null;
 }
 
 function normalizeItem(raw: unknown): ExtractedItem | null {
@@ -95,20 +116,21 @@ export function normalizeReceipt(raw: unknown): ExtractedReceipt {
     .map(normalizeItem)
     .filter((item): item is ExtractedItem => item !== null);
 
-  let total = toNumber(r.total);
-  if (total === null && items.length > 0) {
+  let rawTotal = toNumber(r.total);
+  if (rawTotal === null && items.length > 0) {
     const cents = items.reduce((sum, i) => sum + Math.round(i.total_price * 100), 0);
-    total = cents / 100;
+    rawTotal = cents / 100;
   }
-  if (total === null || total <= 0) {
+  const total = validTotal(rawTotal);
+  if (total === null) {
     throw new ReceiptReadError('Não foi possível ler o valor total da nota.');
   }
 
   return {
     merchant: toText(r.merchant, 80) || 'Estabelecimento não identificado',
     purchase_date: toDate(r.purchase_date),
-    total: round2(total),
-    category: CATEGORY_NAMES.find((c) => c === r.category) ?? 'Outros',
+    total,
+    category: isCategory(r.category) ? r.category : 'Outros',
     payment_method: toText(r.payment_method, 40) || null,
     items,
   };
