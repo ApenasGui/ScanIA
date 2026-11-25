@@ -27,13 +27,15 @@ export function DonutChart({
   const circumference = 2 * Math.PI * radius;
   const total = data.reduce((sum, slice) => sum + slice.value, 0);
 
-  let consumed = 0;
-  const arcs = data.map((slice) => {
-    const length = total > 0 ? (slice.value / total) * circumference : 0;
-    const arc = { ...slice, length, offset: consumed };
-    consumed += length;
-    return arc;
-  });
+  // Cada fatia começa onde as anteriores terminaram (soma dos comprimentos de antes).
+  const lengths = data.map((slice) =>
+    total > 0 ? (slice.value / total) * circumference : 0,
+  );
+  const arcs = data.map((slice, i) => ({
+    ...slice,
+    length: lengths[i],
+    offset: lengths.slice(0, i).reduce((sum, length) => sum + length, 0),
+  }));
 
   return (
     <View style={{ width: size, height: size }}>

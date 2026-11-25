@@ -5,14 +5,17 @@ import { colors } from '@/theme';
 import type { IconName } from '@/utils/icons';
 
 function tabIcon(name: IconName) {
-  return ({ color, size }: { color: ColorValue; size: number }) => (
+  // Função com nome: o React mostra "TabIcon" nas ferramentas de debug.
+  return function TabIcon({ color, size }: { color: ColorValue; size: number }) {
     // A aba pode mandar cor "null"; o ícone só aceita texto.
-    <Ionicons
-      name={name}
-      size={size}
-      color={typeof color === 'string' ? color : undefined}
-    />
-  );
+    return (
+      <Ionicons
+        name={name}
+        size={size}
+        color={typeof color === 'string' ? color : undefined}
+      />
+    );
+  };
 }
 
 export default function TabsLayout() {

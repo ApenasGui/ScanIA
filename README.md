@@ -119,6 +119,7 @@ peça virou algo local e simples:
 | `npm test`            | Testes do app e da validação da IA (Jest)       |
 | `npm run test:server` | Teste de integração do servidor (sobe e testa)  |
 | `npm run typecheck`   | Verifica os tipos do app e do servidor          |
+| `npm run lint`        | Procura problemas no código (ESLint do Expo)    |
 | `npm run format`      | Formata o código (Prettier)                     |
 
 ## Problemas comuns

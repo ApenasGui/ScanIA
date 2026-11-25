@@ -30,9 +30,6 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
-
 # typescript
 *.tsbuildinfo
 
@@ -40,13 +37,10 @@ yarn-error.*
 /ios
 /android
 
-# Segredos locais
+# Segredos locais: arquivos .env de qualquer pasta (app e server/) nunca vão pro git
 .env
 .env.*
 !.env.example
-server/.env
 
 # Banco SQLite e fotos do servidor local
 server/data/
-server/node_modules/
-

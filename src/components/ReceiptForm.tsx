@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { CATEGORIES } from '@/constants/categories';
 import { receiptSchema } from '@/schemas/receipt';
@@ -24,7 +24,6 @@ export function ReceiptForm({ receipt, submitting, onSubmit }: ReceiptFormProps)
   const {
     control,
     handleSubmit,
-    watch,
     setValue,
     formState: { errors },
   } = useForm<ReceiptFormData>({
@@ -37,7 +36,8 @@ export function ReceiptForm({ receipt, submitting, onSubmit }: ReceiptFormProps)
     },
   });
 
-  const category = watch('category');
+  // useWatch (e não watch) funciona com o React Compiler.
+  const category = useWatch({ control, name: 'category' });
 
   const submit = handleSubmit((values) => {
     onSubmit({
