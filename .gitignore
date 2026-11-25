@@ -30,12 +30,20 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
-
 # typescript
 *.tsbuildinfo
 
 # generated native folders
 /ios
 /android
+
+# Segredos locais: arquivos .env de qualquer pasta (app e server/) nunca vão pro git
+.env
+.env.*
+!.env.example
+
+# Banco SQLite e fotos do servidor local
+server/data/
+
+# Arquivos temporários do Playwright (prints automáticos)
+.playwright-mcp/
