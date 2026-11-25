@@ -5,8 +5,8 @@ import {
   MOCK_RECEIPT,
   ReceiptReadError,
   normalizeReceipt,
-} from './parse.ts';
-import type { ExtractedReceipt } from './parse.ts';
+} from '../domain/parse.ts';
+import type { ExtractedReceipt } from '../domain/parse.ts';
 
 export const MAX_IMAGE_BYTES = 3_500_000;
 
@@ -74,7 +74,7 @@ async function callClaude(base64: string): Promise<unknown> {
     throw new Error('ANTHROPIC_API_KEY não configurada no server/.env.');
   }
   // Pior caso: 45 s × 2 tentativas ≈ 90 s. O app espera 150 s pela leitura
-  // (READ_TIMEOUT_MS em src/services/receipts.ts), então ele sempre recebe a resposta.
+  // (READ_TIMEOUT_MS em src/services/receipts.ts do app), então ele sempre recebe a resposta.
   client ??= new Anthropic({ timeout: 45_000, maxRetries: 1 });
 
   const response = await client.messages.create({

@@ -1,16 +1,8 @@
 // Banco local em um único arquivo SQLite. O node:sqlite já vem com o Node 24:
 // nada para instalar, nada na nuvem.
-import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-
-// SCANIA_DATA_DIR permite aos testes usarem uma pasta temporária.
-export const DATA_DIR = process.env.SCANIA_DATA_DIR
-  ? path.resolve(process.env.SCANIA_DATA_DIR)
-  : path.resolve(import.meta.dirname, '..', 'data');
-export const UPLOADS_DIR = path.join(DATA_DIR, 'uploads');
-
-mkdirSync(UPLOADS_DIR, { recursive: true });
+import { DATA_DIR } from './paths.ts';
 
 export const db = new DatabaseSync(path.join(DATA_DIR, 'scania.db'));
 

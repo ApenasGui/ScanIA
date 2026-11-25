@@ -1,4 +1,4 @@
-// Conversa com o servidor local sobre notas. Cada função = uma rota do server/src/index.ts.
+// Conversa com o servidor local sobre notas. Cada função = uma rota do server/src/http/routes.ts.
 import { api } from '@/lib/api';
 import type { Receipt, ReceiptUpdate } from '@/types';
 
@@ -19,7 +19,7 @@ export async function uploadReceipt(base64: string): Promise<string> {
   return id;
 }
 
-// A IA no servidor desiste em ~90 s no pior caso (server/src/ai.ts). Esperamos mais que
+// A IA no servidor desiste em ~90 s no pior caso (server/src/infra/ai.ts). Esperamos mais que
 // isso: se o app desistir antes, a nota fica "não lida" e o usuário paga duas leituras.
 const READ_TIMEOUT_MS = 150_000;
 

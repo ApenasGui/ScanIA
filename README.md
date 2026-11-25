@@ -110,19 +110,40 @@ coloque no `.env` do app nem no Git.
 
 ## Arquitetura
 
+O projeto é organizado **em camadas**: cada camada só conversa com a de baixo.
+São funções simples em arquivos separados, sem classes e sem injeção de dependência.
+
 ```
-app/                rotas (Expo Router)
-src/                componentes, hooks, serviços, schemas e utilitários
-  lib/api.ts        cliente HTTP do servidor local + sessão no aparelho
+App (src/ + app/)                      Servidor (server/src/)
+─────────────────                      ──────────────────────
+app/          telas (Expo Router)      http/          rotas: HTTP <-> serviços
+src/hooks     estado e cache           services/      regras de negócio
+src/services  o que pedir ao servidor  repositories/  SQL
+src/lib/api   cliente HTTP + sessão    infra/         banco, IA, disco, assinatura
+                                       domain/        regras puras e erros
+```
+
+```
+app/                    telas (Expo Router)
+src/
+  components/           componentes visuais
+  hooks/                TanStack Query: busca, cache e mutações
+  services/             uma função por rota do servidor
+  lib/api.ts            cliente HTTP do servidor local + sessão no aparelho
+  schemas/              validação dos formulários (Zod)
+  utils/                dinheiro, datas e resumo do mês (puros, testados)
 server/
-  src/index.ts      rotas HTTP (login, notas, imagens, leitura com IA)
-  src/db.ts         tabelas SQLite
-  src/auth.ts       cadastro, login e sessão
-  src/ai.ts         chamada à IA e modo simulado
-  src/parse.ts      validação da resposta da IA (puro, testado no Jest)
-  test/api.test.ts  teste de integração do servidor
-__tests__/          testes do app (Jest)
-docs/               prints das telas e cupons de exemplo
+  src/index.ts          liga o servidor
+  src/http/             routes.ts (rotas) e helpers.ts (JSON, CORS, token)
+  src/services/         auth.ts (cadastro, login, sessão) e receipts.ts (notas e IA)
+  src/repositories/     users.ts e receipts.ts: todo o SQL fica aqui
+  src/infra/            db.ts (SQLite), ai.ts (Claude), storage.ts (fotos),
+                        signing.ts (links assinados), paths.ts (pastas)
+  src/domain/           parse.ts (validação da IA, valores, datas; também no Jest)
+                        e errors.ts (HttpError)
+  test/api.test.ts      testes de integração (sobem o servidor de verdade)
+__tests__/              testes do app (Jest)
+docs/                   prints das telas e cupons de exemplo
 ```
 
 Fluxo de uma leitura:
@@ -131,7 +152,8 @@ Fluxo de uma leitura:
    `uploads/<id do usuário>/` e cria a nota com estado `pending`.
 2. O app chama `POST /receipts/:id/scan`. O servidor chama a IA, valida a resposta
    com `normalizeReceipt` e grava nota + itens numa transação (`done`), ou marca
-   `error` com uma mensagem amigável.
+   `error` com uma mensagem amigável. Se o usuário salvar uma correção durante a
+   leitura, a correção dele vale e o resultado da IA é descartado.
 3. O usuário revisa e corrige na tela de detalhes.
 
 ### Diferenças em relação ao guia original
@@ -141,7 +163,7 @@ peça virou algo local e simples:
 
 | No guia (Supabase)        | Aqui (local)                                                  |
 | ------------------------- | ------------------------------------------------------------- |
-| Supabase Auth             | `server/src/auth.ts` (scrypt + token aleatório)               |
+| Supabase Auth             | `server/src/services/auth.ts` (scrypt + token aleatório)      |
 | Postgres + RLS            | SQLite; toda consulta de nota filtra por `user_id`            |
 | Storage privado           | pasta `server/data/uploads/` + link assinado (HMAC, 1 hora)   |
 | Edge Function (Deno)      | rota `POST /receipts/:id/scan` no servidor Node               |

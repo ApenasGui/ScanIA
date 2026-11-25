@@ -10,7 +10,7 @@ import {
   normalizeReceipt,
   toBase64,
   validTotal,
-} from '../server/src/parse';
+} from '../server/src/domain/parse';
 
 const valid = {
   is_receipt: true,

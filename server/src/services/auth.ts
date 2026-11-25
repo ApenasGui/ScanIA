@@ -1,4 +1,5 @@
 // Cadastro, login e sessão. Senha com scrypt (vem no Node), token aleatório.
+// Só regras: o SQL fica em repositories/users.ts.
 import {
   createHash,
   randomBytes,
@@ -6,31 +7,22 @@ import {
   scryptSync,
   timingSafeEqual,
 } from 'node:crypto';
-import { db } from './db.ts';
+import { HttpError } from '../domain/errors.ts';
+import {
+  deleteSession,
+  findUserByEmail,
+  findUserBySession,
+  insertSession,
+  insertUser,
+} from '../repositories/users.ts';
+import type { PublicUser } from '../repositories/users.ts';
 
-export interface PublicUser {
-  id: string;
-  name: string;
-  email: string;
-}
+export type { PublicUser };
 
 const MAX_NAME = 80;
 const MAX_EMAIL = 254;
 const MAX_PASSWORD = 200;
 const SESSION_DAYS = 30;
-
-interface UserRow extends PublicUser {
-  password_hash: string;
-}
-
-// Erro com status HTTP: a mensagem pode ir para o usuário.
-export class HttpError extends Error {
-  status: number;
-  constructor(status: number, message: string) {
-    super(message);
-    this.status = status;
-  }
-}
 
 function hashPassword(password: string): string {
   const salt = randomBytes(16).toString('hex');
@@ -45,14 +37,12 @@ function checkPassword(password: string, stored: string): boolean {
   return expected.length === actual.length && timingSafeEqual(expected, actual);
 }
 
+// Guardamos só o hash do token: se alguém copiar o banco, não consegue entrar.
 const sha256 = (text: string) => createHash('sha256').update(text).digest('hex');
 
 function createSession(userId: string): string {
   const token = randomBytes(32).toString('hex');
-  db.prepare('insert into sessions (token_hash, user_id) values (?, ?)').run(
-    sha256(token),
-    userId,
-  );
+  insertSession(sha256(token), userId);
   return token;
 }
 
@@ -74,13 +64,10 @@ export function register(body: Record<string, unknown>) {
     throw new HttpError(400, 'Use pelo menos 6 caracteres na senha.');
   if (password.length > MAX_PASSWORD) throw new HttpError(400, 'Senha muito longa.');
 
-  const exists = db.prepare('select id from users where email = ?').get(email);
-  if (exists) throw new HttpError(409, 'Este e-mail já está cadastrado.');
+  if (findUserByEmail(email)) throw new HttpError(409, 'Este e-mail já está cadastrado.');
 
   const user: PublicUser = { id: randomUUID(), name, email };
-  db.prepare(
-    'insert into users (id, name, email, password_hash) values (?, ?, ?, ?)',
-  ).run(user.id, user.name, user.email, hashPassword(password));
+  insertUser(user, hashPassword(password));
   return { token: createSession(user.id), user };
 }
 
@@ -101,9 +88,7 @@ export function login(body: Record<string, unknown>) {
     throw new HttpError(429, 'Muitas tentativas. Espere 15 minutos e tente de novo.');
   }
 
-  const row = db
-    .prepare('select id, name, email, password_hash from users where email = ?')
-    .get(email) as UserRow | undefined;
+  const row = findUserByEmail(email);
 
   // Mesma mensagem para e-mail inexistente e senha errada: não revela quem tem conta.
   if (
@@ -121,20 +106,13 @@ export function login(body: Record<string, unknown>) {
 }
 
 export function logout(token: string) {
-  db.prepare('delete from sessions where token_hash = ?').run(sha256(token));
+  deleteSession(sha256(token));
 }
 
-// Lê "Authorization: Bearer <token>" e devolve o usuário, ou null.
+// Devolve o dono do token, ou null.
 // Sessão mais velha que 30 dias não vale mais: o usuário entra de novo.
 export function userFromToken(token: string | null): PublicUser | null {
   if (!token) return null;
   const oldest = new Date(Date.now() - SESSION_DAYS * 24 * 60 * 60 * 1000).toISOString();
-  const row = db
-    .prepare(
-      `select u.id, u.name, u.email from sessions s
-       join users u on u.id = s.user_id
-       where s.token_hash = ? and s.created_at > ?`,
-    )
-    .get(sha256(token), oldest) as PublicUser | undefined;
-  return row ?? null;
+  return findUserBySession(sha256(token), oldest) ?? null;
 }
