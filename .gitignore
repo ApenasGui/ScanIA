@@ -44,3 +44,6 @@ yarn-error.*
 
 # Banco SQLite e fotos do servidor local
 server/data/
+
+# Arquivos temporários do Playwright (prints automáticos)
+.playwright-mcp/

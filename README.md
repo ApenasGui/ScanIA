@@ -18,6 +18,43 @@ que já vem no Node 24). Sem banco externo, sem nuvem.
 - Fotos guardadas no servidor, abertas só por link assinado que expira em 1 hora
 - Cada usuário só enxerga as próprias notas
 
+## Telas
+
+Prints do app rodando (modo simulado da IA) com 3 compras de novembro de 2026:
+supermercado (R$ 87,40), posto de gasolina (R$ 150,00) e farmácia (R$ 64,90).
+
+### Conta
+
+| Login | Cadastro | Primeiro acesso |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/01-login.png" width="220" alt="Tela de login"> | <img src="docs/screenshots/02-cadastro.png" width="220" alt="Tela de cadastro"> | <img src="docs/screenshots/03-lista-vazia.png" width="220" alt="Lista de notas vazia"> |
+
+### Escanear uma nota
+
+| Escolher a foto | Foto escolhida | IA lendo a nota |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/04-escanear.png" width="220" alt="Tela de escanear"> | <img src="docs/screenshots/05-foto-escolhida.png" width="220" alt="Foto do cupom escolhida"> | <img src="docs/screenshots/06-ia-lendo.png" width="220" alt="IA lendo a nota"> |
+
+### Revisar e corrigir
+
+O usuário confere o que a IA leu, corrige o que precisar e salva.
+
+| Dados extraídos | Itens da nota |
+| :---: | :---: |
+| <img src="docs/screenshots/07-detalhes.png" width="220" alt="Detalhes da nota com foto, estabelecimento, data, valor e categoria"> | <img src="docs/screenshots/08-detalhes-itens.png" width="220" alt="Itens da nota e botão de excluir"> |
+
+### Acompanhar os gastos
+
+O resumo soma as notas do mês e divide por categoria. Em novembro: **R$ 302,30** em
+3 notas (média de R$ 100,77), sendo Transporte 50%, Alimentação 29% e Saúde 21%.
+
+| Minhas notas | Resumo do mês | Perfil |
+| :---: | :---: | :---: |
+| <img src="docs/screenshots/09-lista-notas.png" width="220" alt="Lista com as 3 notas de novembro"> | <img src="docs/screenshots/10-resumo.png" width="220" alt="Resumo de novembro com total de R$ 302,30 e gráfico por categoria"> | <img src="docs/screenshots/11-perfil.png" width="220" alt="Tela de perfil"> |
+
+Os cupons usados nos prints estão em [`docs/cupons-exemplo/`](docs/cupons-exemplo/)
+e servem para testar o app sem precisar fotografar uma nota de verdade.
+
 ## Tecnologias
 
 React Native · Expo (SDK 58) · Expo Router · TypeScript · Node 24 (`node:http`,
@@ -85,6 +122,7 @@ server/
   src/parse.ts      validação da resposta da IA (puro, testado no Jest)
   test/api.test.ts  teste de integração do servidor
 __tests__/          testes do app (Jest)
+docs/               prints das telas e cupons de exemplo
 ```
 
 Fluxo de uma leitura:
