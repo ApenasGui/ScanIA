@@ -1,0 +1,17 @@
+{
+  "name": "scania-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Servidor local do ScanIA: SQLite (node:sqlite), fotos em disco e leitura por IA.",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env src/index.ts",
+    "typecheck": "tsc --noEmit -p ."
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.14.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0"
+  }
+}

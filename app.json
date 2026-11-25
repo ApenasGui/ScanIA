@@ -1,13 +1,14 @@
 {
   "expo": {
-    "name": "scania-tmp",
-    "slug": "scania-tmp",
+    "name": "ScanIA",
+    "slug": "scania",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.scania.app"
     },
     "android": {
       "adaptiveIcon": {
@@ -16,10 +17,22 @@
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.scania.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "O ScanIA usa a câmera para fotografar suas notas fiscais.",
+          "photosPermission": "O ScanIA acessa suas fotos para ler notas fiscais salvas na galeria."
+        }
+      ]
+    ],
+    "scheme": "scania"
   }
 }

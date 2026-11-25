@@ -39,3 +39,14 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Segredos locais
+.env
+.env.*
+!.env.example
+server/.env
+
+# Banco SQLite e fotos do servidor local
+server/data/
+server/node_modules/
+
